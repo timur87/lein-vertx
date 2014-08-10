@@ -7,27 +7,30 @@
             [lein-vertx.core :as core])
   (:import (java.io FileNotFoundException File)))
 
-(defn run 
+(defn runmod 
   "Run the main function specified from command line or under [:vertx :main] in project.clj"
-  [project main & args]
-  (if main
-    (apply core/invoke-vertx project "run"
-           (core/write-main project (symbol main))
+  [project modowner modname version & args]
+  (if (and modowner modname version)
+    (apply core/invoke-vertx project "runmod"
+           (core/generate-mod-id  modowner modname version)
            args)
-    (main/abort (str "No main provided.\n"
-                     "Specify a fully qualified function name on the command-line,\n"
-                     "or under [:vertx :main] in project.clj."))))
+    (main/abort (str ":modowner, :modname and :version must be provided in vertx description" 
+                     "provided values are: \n"
+                     "\nmodowner: "  modowner
+                     "\nmodname " modname
+                     "\nversion: " version))))
 
 (defn vertx
   "Leiningen plugin to run vertx verticle."
    {:help-arglists '([subtask [args...]])
-    :subtasks [#'run #'core/buildmod]}
+    :subtasks [#'runmod #'core/buildmod]}
   ([project]
      (println (help-for "vertx")))
   ([project subtask & args]
      (case subtask
-       "run" (if (first args)
-               (apply run project args)
-               (apply run project (-> project :vertx :main) args))
-       "buildmod" (core/buildmod project (-> project :vertx :main) args)
+       "runmod" (if (first args)
+               (apply runmod project args)
+               (apply runmod project (-> project :vertx :modowner) (-> project :vertx :modname) (-> project :vertx :version) args))
+       "zip" (core/buildmod project (-> project :vertx :main) args)
+       "buildmod" (core/create-mod project (-> project :vertx :main) args)
        (println (help-for "vertx")))))
