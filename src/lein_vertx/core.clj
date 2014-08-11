@@ -55,33 +55,36 @@
   [project]
   (.getAbsolutePath (io/file (get-mods-path))))
 
+(defn get-deps-path 
+  [project] 
+  (str (get-mods-path) "deps" java.io.File/separator))
+
 (defn get-lib-path 
   [project] 
   (str (get-mod-path project) "lib" java.io.File/separator))
 
 (defn create-build-folder
   [project]
-  (. (io/file (get-mod-path project)) (mkdirs))
-  (. (io/file (get-lib-path project)) (mkdirs)))
+  (fs/mkdirs (get-mod-path project)))
 
 (defn target-file
   [file-path file-name]
   (if (.endsWith file-path java.io.File/separator)
     (str file-path file-name)
     (str file-path java.io.File/separator file-name)))
- 
 
-(defn lib-target-file [src-file project]
-  (target-file (get-lib-path project) (.getName src-file)))
+(defn lib-target-file [src-file target-folder]
+  (target-file target-folder (.getName src-file)))
 
 (defn copy-dependencies
-  [project]
+  [project target-folder]
   (info "Dependencies will be copied from :dependencies")
+  (fs/mkdirs (fs/file target-folder))
   (let [dependencies (libs project)]
     (doseq [dependency dependencies]
 ;;      (debug (str "Copying " dependencies " to " (lib-target-file dependencies project)))
-      (debug (str "Copying " dependency " to "(lib-target-file dependency project)))
-      (fs/copy dependency (lib-target-file dependency project)))))
+      (debug (str "Copying " dependency " to "(lib-target-file dependency target-folder)))
+      (fs/copy dependency (lib-target-file dependency target-folder)))))
 
 (defn compile-mod
   [project]
@@ -170,10 +173,27 @@
 (defn create-mod
   [project & args]
   (create-build-folder project)
-  (copy-dependencies project)
+  (copy-dependencies project (get-lib-path project))
   (compile-mod project)
   (copy-sources project)
-  (copy-resources project))
+  (copy-resources project)
+  (copy-dependencies project (get-deps-path project)))
+
+(defn pullindeps
+  [project & args]
+  (create-build-folder project)
+  (copy-dependencies project (get-deps-path project)))
+
+(defn create-mod-link 
+  [project & args]
+  (let [file-name (str (get-mod-path project) "module.link")]
+    (fs/create (fs/file file-name))
+    (spit file-name fs/*cwd*)))
+
+(defn init-mod
+  [project & args]
+  (create-build-folder project)
+  (create-mod-link project))
 
 (defn invoke-vertx
   "Invokes vertx in the given project."
