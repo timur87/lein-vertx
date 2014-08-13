@@ -109,10 +109,27 @@
           (doseq [folder folders]
             (fs/copy-dir (str source-root-path folder) (target-file target-root-path folder)))
           (doseq [file files]
-            (info folder-path " --- " (last (string/split (.getAbsolutePath root) (re-pattern  folder-path))))
-            (info (str target-root-path))
-            (info (str source-root-path file) ":" (target-file target-root-path file))
             (fs/copy+ (str source-root-path java.io.File/separator file) (target-file target-root-path file))))))))
+
+(defn get-file-list
+  "create [[file content] [file content]] list of the the target path"
+  [target-path]
+  (if (fs/exists? target-path)
+    (let [target-paths (fs/iterate-dir target-path)
+          list []]
+      (doseq [folder target-paths]
+        (let [root (get folder 0)
+              folders (get folder 1)
+              files (get folder 2)
+              target-root-path (str
+                                (if (last (string/split (.getAbsolutePath root) (re-pattern  target-path)))
+                                  (last (string/split (.getAbsolutePath root) (re-pattern  target-path)))
+                                  "")) 
+              source-root-path (.getAbsolutePath root)]
+          (doseq [file files]
+            (fs/copy+ (str source-root-path java.io.File/separator file) (target-file target-root-path file))))))
+    list))
+
 
 (defn copy-resources
   [project]
